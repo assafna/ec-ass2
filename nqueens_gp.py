@@ -1,6 +1,7 @@
 import operator
 from functools import partial
 
+import multiprocessing
 import numpy as np
 
 from deap import algorithms
@@ -10,7 +11,7 @@ from deap import tools
 from deap import gp
 
 
-NQUEENS_N = 8
+NQUEENS_N = 20
 
 
 def progn(*args):
@@ -90,7 +91,6 @@ class NQueens(object):
         # main diagonal
         for index in range(self.n - 1):
             if index != 0:
-                temp = list(np.diag(board_2d, k=-index))
                 score += max(list(np.diag(board_2d, k=-index)).count(1) - 1, 0)
             score += max(list(np.diag(board_2d, k=index)).count(1) - 1, 0)
 
@@ -99,6 +99,59 @@ class NQueens(object):
             if _index != 0:
                 score += max(list(np.diag(np.fliplr(board_2d), k=-_index)).count(1) - 1, 0)
             score += max(list(np.diag(np.fliplr(board_2d), k=_index)).count(1) - 1, 0)
+
+        return score
+
+    def eval_score2(self):
+        score = 0
+
+        board_2d = []
+        for index in range(self.n):
+            row = [0] * self.n
+            row[self.board[index]] = 1
+            board_2d.append(row)
+
+        for row_index in range(self.n):
+            for col_index in range(self.n):
+                if board_2d[row_index][col_index] == 1:
+                    queen_score = 0
+                    # right down
+                    index = 1
+                    while True:
+                        if row_index + index < self.n and col_index + index < self.n:
+                            if board_2d[row_index + index][col_index + index] == 1:
+                                queen_score += 1
+                            index += 1
+                        else:
+                            break
+                    # left up
+                    index = 1
+                    while True:
+                        if row_index - index >= 0 and col_index - index >= 0:
+                            if board_2d[row_index - index][col_index - index] == 1:
+                                queen_score += 1
+                            index += 1
+                        else:
+                            break
+                    # left down
+                    index = 1
+                    while True:
+                        if row_index + index < self.n and col_index - index >= 0:
+                            if board_2d[row_index + index][col_index - index] == 1:
+                                queen_score += 1
+                            index += 1
+                        else:
+                            break
+                    # right up
+                    index = 1
+                    while True:
+                        if row_index - index >= 0 and col_index + index < self.n:
+                            if board_2d[row_index - index][col_index + index] == 1:
+                                queen_score += 1
+                            index += 1
+                        else:
+                            break
+                    score += queen_score
 
         return score
 
@@ -142,7 +195,7 @@ toolbox.register('population', tools.initRepeat, list, toolbox.individual)
 def eval_nqueens(individual):
     routine = gp.compile(expr=individual, pset=pset)
     nqueens.run(routine)
-    score = nqueens.eval_score()
+    score = nqueens.eval_score2()
     if score == 0:
         nodes, edges, labels = gp.graph(individual)
         # print_graph(edges, labels)
@@ -160,6 +213,10 @@ toolbox.register('mutate', gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 toolbox.decorate('mate', gp.staticLimit(key=operator.attrgetter('height'), max_value=20))
 toolbox.decorate('mutate', gp.staticLimit(key=operator.attrgetter('height'), max_value=20))
 
+# mp
+# pool = multiprocessing.Pool()
+# toolbox.register('map', pool.map)
+
 
 def print_graph(edges, labels):
     for edge in edges:
@@ -167,7 +224,7 @@ def print_graph(edges, labels):
 
 
 if __name__ == '__main__':
-    pop = toolbox.population(n=300)
+    pop = toolbox.population(n=1000)
     hof = tools.HallOfFame(1)
     stats = tools.Statistics(lambda ind: ind.fitness.values)
     stats.register('avg', np.mean)
@@ -179,7 +236,7 @@ if __name__ == '__main__':
                         toolbox=toolbox,
                         cxpb=0.9,
                         mutpb=0.2,
-                        ngen=100,
+                        ngen=200,
                         stats=stats,
                         halloffame=hof
                         )
