@@ -1,13 +1,16 @@
+import operator
 from functools import partial
 
 import numpy as np
-import pygraphviz as pgv
 
 from deap import algorithms
 from deap import base
 from deap import creator
 from deap import tools
 from deap import gp
+
+
+NQUEENS_N = 8
 
 
 def progn(*args):
@@ -34,14 +37,38 @@ class NQueens(object):
     def move_index1_up(self):
         self.index1 += 1 if self.index1 < self.n - 1 else self.index1
 
+    def move_index1_up2(self):
+        self.index1 += 2 if self.index1 < self.n - 2 else self.index1
+
     def move_index1_down(self):
         self.index1 -= 1 if self.index1 > 0 else self.index1
+
+    def move_index1_down2(self):
+        self.index1 -= 2 if self.index1 > 1 else self.index1
+
+    def move_index1_start(self):
+        self.index1 = 0
+
+    def move_index1_end(self):
+        self.index1 = self.n
 
     def move_index2_up(self):
         self.index2 += 1 if self.index2 < self.n - 1 else self.index2
 
+    def move_index2_up2(self):
+        self.index2 += 2 if self.index2 < self.n - 2 else self.index2
+
     def move_index2_down(self):
         self.index2 -= 1 if self.index2 > 0 else self.index2
+
+    def move_index2_down2(self):
+        self.index2 -= 2 if self.index2 > 1 else self.index2
+
+    def move_index2_start(self):
+        self.index2 = 0
+
+    def move_index2_end(self):
+        self.index2 = self.n
 
     def swap(self):
         if 0 <= self.index1 < self.n and 0 <= self.index2 < self.n:
@@ -73,25 +100,39 @@ class NQueens(object):
                 score += max(list(np.diag(np.fliplr(board_2d), k=-_index)).count(1) - 1, 0)
             score += max(list(np.diag(np.fliplr(board_2d), k=_index)).count(1) - 1, 0)
 
-        if score == 0:
-            print(self.board)
-
         return score
 
 
-nqueens = NQueens(n=8)
+# agent
+nqueens = NQueens(n=NQUEENS_N)
 
 pset = gp.PrimitiveSet(name='nqueens', arity=0)
+
+# primitives
 pset.addPrimitive(primitive=prog2, arity=2)
+
+# terminals
 pset.addTerminal(nqueens.move_index1_up)
+pset.addTerminal(nqueens.move_index1_up2)
 pset.addTerminal(nqueens.move_index1_down)
+pset.addTerminal(nqueens.move_index1_down2)
+pset.addTerminal(nqueens.move_index1_start)
+pset.addTerminal(nqueens.move_index1_end)
+
 pset.addTerminal(nqueens.move_index2_up)
+pset.addTerminal(nqueens.move_index2_up2)
 pset.addTerminal(nqueens.move_index2_down)
+pset.addTerminal(nqueens.move_index2_down2)
+pset.addTerminal(nqueens.move_index2_start)
+pset.addTerminal(nqueens.move_index2_end)
+
 pset.addTerminal(nqueens.swap)
 
+# fitness
 creator.create(name='FitnessMin', base=base.Fitness, weights=(-1.0,))
 creator.create(name='Individual', base=gp.PrimitiveTree, fitness=creator.FitnessMin)
 
+# population
 toolbox = base.Toolbox()
 toolbox.register('expr_init', gp.genHalfAndHalf, pset=pset, min_=1, max_=2)
 toolbox.register('individual', tools.initIterate, creator.Individual, toolbox.expr_init)
@@ -104,28 +145,25 @@ def eval_nqueens(individual):
     score = nqueens.eval_score()
     if score == 0:
         nodes, edges, labels = gp.graph(individual)
-        draw_graph(nodes, edges, labels)
+        # print_graph(edges, labels)
     return score,
 
 
+# eval and mutate
 toolbox.register('evaluate', eval_nqueens)
 toolbox.register('select', tools.selTournament, tournsize=7)
 toolbox.register('mate', gp.cxOnePoint)
 toolbox.register('expr_mut', gp.genFull, min_=0, max_=2)
 toolbox.register('mutate', gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
+# bloat control
+toolbox.decorate('mate', gp.staticLimit(key=operator.attrgetter('height'), max_value=20))
+toolbox.decorate('mutate', gp.staticLimit(key=operator.attrgetter('height'), max_value=20))
 
-def draw_graph(nodes, edges, labels):
-    g = pgv.AGraph()
-    g.add_nodes_from(nodes)
-    g.add_edges_from(edges)
-    g.layout(prog="dot")
 
-    for i in nodes:
-        n = g.get_node(i)
-        n.attr["label"] = labels[i]
-
-    g.draw("tree.pdf")
+def print_graph(edges, labels):
+    for edge in edges:
+        print(str(edge[0]) + '.' + labels[edge[0]] + '->' + str(edge[1]) + '.' + labels[edge[1]])
 
 
 if __name__ == '__main__':
@@ -137,4 +175,11 @@ if __name__ == '__main__':
     stats.register('min', np.min)
     stats.register('max', np.max)
 
-    algorithms.eaSimple(pop, toolbox, 0.5, 0.2, 100, stats, halloffame=hof)
+    algorithms.eaSimple(population=pop,
+                        toolbox=toolbox,
+                        cxpb=0.9,
+                        mutpb=0.2,
+                        ngen=100,
+                        stats=stats,
+                        halloffame=hof
+                        )
