@@ -13,7 +13,7 @@ from deap import creator
 from deap import tools
 from deap import gp
 
-NQUEENS_N = 20
+NQUEENS_N = 8
 
 
 def progn(*args):
@@ -209,8 +209,8 @@ toolbox.register('expr_mut', gp.genFull, min_=0, max_=2)
 toolbox.register('mutate', gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
 # bloat control
-toolbox.decorate('mate', gp.staticLimit(key=operator.attrgetter('height'), max_value=17))
-toolbox.decorate('mutate', gp.staticLimit(key=operator.attrgetter('height'), max_value=17))
+toolbox.decorate('mate', gp.staticLimit(key=operator.attrgetter('height'), max_value=9))
+toolbox.decorate('mutate', gp.staticLimit(key=operator.attrgetter('height'), max_value=9))
 
 
 # mp
@@ -260,7 +260,7 @@ def plot(_log1, _log2, _log3, _title):
 
 
 def run():
-    pop = toolbox.population(n=1000)
+    pop = toolbox.population(n=150)
     hof = tools.HallOfFame(1)
     stats = tools.Statistics(lambda ind: ind.fitness.values)
     stats.register('avg', np.mean)
@@ -268,7 +268,7 @@ def run():
     stats.register('min', np.min)
     stats.register('max', np.max)
 
-    _, log = algorithms.eaSimple(population=pop, toolbox=toolbox, cxpb=0.9, mutpb=0.2, ngen=200, stats=stats,
+    _, log = algorithms.eaSimple(population=pop, toolbox=toolbox, cxpb=0.9, mutpb=0.2, ngen=150, stats=stats,
                                   halloffame=hof)
 
     return log, hof
