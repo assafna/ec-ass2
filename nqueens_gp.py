@@ -1,4 +1,5 @@
 import operator
+import random
 import statistics
 from functools import partial
 
@@ -13,7 +14,7 @@ from deap import creator
 from deap import tools
 from deap import gp
 
-NQUEENS_N = 8
+NQUEENS_N = 4
 
 
 def progn(*args):
@@ -23,6 +24,10 @@ def progn(*args):
 
 def prog2(out1, out2):
     return partial(progn, out1, out2)
+
+
+def if_then_else(condition, out1, out2):
+    out1() if condition() else out2()
 
 
 class NQueens(object):
@@ -36,6 +41,9 @@ class NQueens(object):
         self.board = list(range(self.n))
         self.index1 = 0
         self.index2 = 0
+
+        # random board
+        random.shuffle(self.board)
 
     def move_index1_up(self):
         self.index1 += 1 if self.index1 < self.n - 1 else self.index1
@@ -72,6 +80,140 @@ class NQueens(object):
 
     def move_index2_end(self):
         self.index2 = self.n
+
+    def minimum_conflicts_queen_index(self):
+        minimum_conflicts_queen_index = (0, 0)
+
+        board_2d = []
+        for index in range(self.n):
+            row = [0] * self.n
+            row[self.board[index]] = 1
+            board_2d.append(row)
+
+        for row_index in range(self.n):
+            for col_index in range(self.n):
+                if board_2d[row_index][col_index] == 1:
+                    queen_score = 0
+                    # right down
+                    index = 1
+                    while True:
+                        if row_index + index < self.n and col_index + index < self.n:
+                            if board_2d[row_index + index][col_index + index] == 1:
+                                queen_score += 1
+                            index += 1
+                        else:
+                            break
+                    # left up
+                    index = 1
+                    while True:
+                        if row_index - index >= 0 and col_index - index >= 0:
+                            if board_2d[row_index - index][col_index - index] == 1:
+                                queen_score += 1
+                            index += 1
+                        else:
+                            break
+                    # left down
+                    index = 1
+                    while True:
+                        if row_index + index < self.n and col_index - index >= 0:
+                            if board_2d[row_index + index][col_index - index] == 1:
+                                queen_score += 1
+                            index += 1
+                        else:
+                            break
+                    # right up
+                    index = 1
+                    while True:
+                        if row_index - index >= 0 and col_index + index < self.n:
+                            if board_2d[row_index - index][col_index + index] == 1:
+                                queen_score += 1
+                            index += 1
+                        else:
+                            break
+
+                    if minimum_conflicts_queen_index[0] > queen_score:
+                        minimum_conflicts_queen_index = (queen_score, row_index)
+
+        return minimum_conflicts_queen_index[1]
+
+    def maximum_conflicts_queen_index(self):
+        maximum_conflicts_queen_index = (0, 0)
+
+        board_2d = []
+        for index in range(self.n):
+            row = [0] * self.n
+            row[self.board[index]] = 1
+            board_2d.append(row)
+
+        for row_index in range(self.n):
+            for col_index in range(self.n):
+                if board_2d[row_index][col_index] == 1:
+                    queen_score = 0
+                    # right down
+                    index = 1
+                    while True:
+                        if row_index + index < self.n and col_index + index < self.n:
+                            if board_2d[row_index + index][col_index + index] == 1:
+                                queen_score += 1
+                            index += 1
+                        else:
+                            break
+                    # left up
+                    index = 1
+                    while True:
+                        if row_index - index >= 0 and col_index - index >= 0:
+                            if board_2d[row_index - index][col_index - index] == 1:
+                                queen_score += 1
+                            index += 1
+                        else:
+                            break
+                    # left down
+                    index = 1
+                    while True:
+                        if row_index + index < self.n and col_index - index >= 0:
+                            if board_2d[row_index + index][col_index - index] == 1:
+                                queen_score += 1
+                            index += 1
+                        else:
+                            break
+                    # right up
+                    index = 1
+                    while True:
+                        if row_index - index >= 0 and col_index + index < self.n:
+                            if board_2d[row_index - index][col_index + index] == 1:
+                                queen_score += 1
+                            index += 1
+                        else:
+                            break
+
+                    if maximum_conflicts_queen_index[0] < queen_score:
+                        maximum_conflicts_queen_index = (queen_score, row_index)
+
+        return maximum_conflicts_queen_index[1]
+
+    def is_index1_bigger_minimum_func(self):
+        return self.index1 > self.minimum_conflicts_queen_index()
+
+    def is_index2_bigger_maximum_func(self):
+        return self.index2 > self.maximum_conflicts_queen_index()
+
+    def is_index1_equals_minimum_func(self):
+        return self.index1 == self.minimum_conflicts_queen_index()
+
+    def is_index2_equals_maximum_func(self):
+        return self.index2 == self.maximum_conflicts_queen_index()
+
+    def is_index1_bigger_minimum(self, out1, out2):
+        return partial(if_then_else, self.is_index1_bigger_minimum_func, out1, out2)
+
+    def is_index2_bigger_maximum(self, out1, out2):
+        return partial(if_then_else, self.is_index2_bigger_maximum_func, out1, out2)
+
+    def is_index1_equals_minimum(self, out1, out2):
+        return partial(if_then_else, self.is_index1_equals_minimum_func, out1, out2)
+
+    def is_index2_equals_maximum(self, out1, out2):
+        return partial(if_then_else, self.is_index2_equals_maximum_func, out1, out2)
 
     def swap(self):
         if 0 <= self.index1 < self.n and 0 <= self.index2 < self.n:
@@ -165,6 +307,10 @@ pset = gp.PrimitiveSet(name='nqueens', arity=0)
 
 # primitives
 pset.addPrimitive(primitive=prog2, arity=2)
+pset.addPrimitive(primitive=nqueens.is_index1_bigger_minimum, arity=2)
+pset.addPrimitive(primitive=nqueens.is_index2_bigger_maximum, arity=2)
+pset.addPrimitive(primitive=nqueens.is_index1_equals_minimum, arity=2)
+pset.addPrimitive(primitive=nqueens.is_index2_equals_maximum, arity=2)
 
 # terminals
 pset.addTerminal(nqueens.move_index1_up)
@@ -189,16 +335,19 @@ creator.create(name='Individual', base=gp.PrimitiveTree, fitness=creator.Fitness
 
 # population
 toolbox = base.Toolbox()
-toolbox.register('expr_init', gp.genHalfAndHalf, pset=pset, min_=1, max_=2)
+toolbox.register('expr_init', gp.genHalfAndHalf, pset=pset, min_=1, max_=5)
 toolbox.register('individual', tools.initIterate, creator.Individual, toolbox.expr_init)
 toolbox.register('population', tools.initRepeat, list, toolbox.individual)
 
 
 def eval_nqueens(individual):
     routine = gp.compile(expr=individual, pset=pset)
-    nqueens.run(routine)
-    score = nqueens.eval_score2()
-    return score,
+    score = 0
+    for random_board in range(1000):
+        nqueens.run(routine)
+        score += nqueens.eval_score2()
+    average = score / 1000
+    return average,
 
 
 # eval and mutate
@@ -209,8 +358,8 @@ toolbox.register('expr_mut', gp.genFull, min_=0, max_=2)
 toolbox.register('mutate', gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
 # bloat control
-toolbox.decorate('mate', gp.staticLimit(key=operator.attrgetter('height'), max_value=9))
-toolbox.decorate('mutate', gp.staticLimit(key=operator.attrgetter('height'), max_value=9))
+toolbox.decorate('mate', gp.staticLimit(key=operator.attrgetter('height'), max_value=17))
+toolbox.decorate('mutate', gp.staticLimit(key=operator.attrgetter('height'), max_value=17))
 
 
 # mp
@@ -260,7 +409,7 @@ def plot(_log1, _log2, _log3, _title):
 
 
 def run():
-    pop = toolbox.population(n=150)
+    pop = toolbox.population(n=1000)
     hof = tools.HallOfFame(1)
     stats = tools.Statistics(lambda ind: ind.fitness.values)
     stats.register('avg', np.mean)
@@ -268,7 +417,7 @@ def run():
     stats.register('min', np.min)
     stats.register('max', np.max)
 
-    _, log = algorithms.eaSimple(population=pop, toolbox=toolbox, cxpb=0.9, mutpb=0.2, ngen=150, stats=stats,
+    _, log = algorithms.eaSimple(population=pop, toolbox=toolbox, cxpb=0.8, mutpb=0.2, ngen=200, stats=stats,
                                   halloffame=hof)
 
     return log, hof
